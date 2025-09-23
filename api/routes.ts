@@ -10,26 +10,31 @@ import {
 } from "@shared/schema";
 import { normalizeDate } from "./utils";
 
-// Configure multer for file uploads
+// Configure multer for file uploads with serverless-friendly settings
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit for serverless
+    files: 1, // Allow only one file
   },
   fileFilter: (req: any, file: any, cb: any) => {
-    const allowedExtensions = [".csv", ".xls", ".xlsx"];
-    const fileExtension = file.originalname
-      .toLowerCase()
-      .slice(file.originalname.lastIndexOf("."));
+    try {
+      const allowedExtensions = [".csv", ".xls", ".xlsx"];
+      const fileExtension = file.originalname
+        .toLowerCase()
+        .slice(file.originalname.lastIndexOf("."));
 
-    if (allowedExtensions.includes(fileExtension)) {
-      cb(null, true);
-    } else {
-      cb(
-        new Error(
-          "Invalid file type. Only CSV, XLS, and XLSX files are allowed."
-        )
-      );
+      if (allowedExtensions.includes(fileExtension)) {
+        cb(null, true);
+      } else {
+        cb(
+          new Error(
+            "Invalid file type. Only CSV, XLS, and XLSX files are allowed."
+          )
+        );
+      }
+    } catch (error) {
+      cb(new Error("Error processing file"));
     }
   },
 });
@@ -522,17 +527,39 @@ function processStandardTravelData(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // File upload endpoint
+  // File upload endpoint with enhanced error handling
   app.post(
     "/api/upload",
-    upload.single("file"),
+    (req: Request & { file?: Express.Multer.File }, res, next) => {
+      upload.single("file")(req, res, (err) => {
+        if (err) {
+          console.error("File upload error:", err);
+          return res.status(400).json({
+            message: err.message || "File upload failed",
+            error:
+              process.env.NODE_ENV === "development" ? err.stack : undefined,
+          });
+        }
+        next();
+      });
+    },
     async (req: Request & { file?: Express.Multer.File }, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "No file uploaded" });
         }
 
-        // Process the uploaded file
+        // Add request timeout
+        const timeout = setTimeout(() => {
+          res.status(504).json({ message: "Request timeout" });
+        }, 25000); // 25 second timeout
+
+        // Process the uploaded file with validation
+        if (!req.file.buffer || req.file.buffer.length === 0) {
+          throw new Error("Empty file uploaded");
+        }
+
+        // Process the file with proper error handling
         const processedData = processExcelData(
           req.file.buffer,
           req.file.originalname
