@@ -14,11 +14,17 @@ import { normalizeDate } from "./utils";
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit for serverless
+    fileSize: 3 * 1024 * 1024, // 3MB limit for better serverless performance
     files: 1, // Allow only one file
   },
   fileFilter: (req: any, file: any, cb: any) => {
     try {
+      // Check file size early
+      if (parseInt(req.headers["content-length"]) > 3 * 1024 * 1024) {
+        cb(new Error("File size too large. Maximum size is 3MB"));
+        return;
+      }
+
       const allowedExtensions = [".csv", ".xls", ".xlsx"];
       const fileExtension = file.originalname
         .toLowerCase()
@@ -34,6 +40,7 @@ const upload = multer({
         );
       }
     } catch (error) {
+      console.error("File upload filter error:", error);
       cb(new Error("Error processing file"));
     }
   },
@@ -50,14 +57,14 @@ function parseCompositeField(compositeField: string): {
   }
 
   // Pattern: "Customer Name ROUTE PNR Date"
-  // Example: "Ali DXB-LHE PNR54321 2025-08-01"
+  // Example: "Ali DXB-LHE PNR54321 2025-08-01" or "Ali DXB/LHE PNR54321 2025-08-01"
   const patterns = [
-    // Pattern with PNR prefix
-    /^([A-Za-z\s]+?)\s+([A-Z]{3}-[A-Z]{3})\s+(PNR\w+)\s+(\d{4}-\d{2}-\d{2})$/,
-    // Pattern without PNR prefix
-    /^([A-Za-z\s]+?)\s+([A-Z]{3}-[A-Z]{3})\s+(\w+)\s+(\d{4}-\d{2}-\d{2})$/,
-    // More flexible pattern
-    /^([A-Za-z\s]+?)\s+([A-Z]{2,4}-[A-Z]{2,4})\s+(\w+)\s+(.+)$/,
+    // Pattern with PNR prefix (hyphen or slash in route)
+    /^([A-Za-z\s]+?)\s+([A-Z]{3}[\/\-][A-Z]{3})\s+(PNR\w+)\s+(\d{4}-\d{2}-\d{2})$/,
+    // Pattern without PNR prefix (hyphen or slash in route)
+    /^([A-Za-z\s]+?)\s+([A-Z]{3}[\/\-][A-Z]{3})\s+(\w+)\s+(\d{4}-\d{2}-\d{2})$/,
+    // More flexible pattern (hyphen or slash in route)
+    /^([A-Za-z\s]+?)\s+([A-Z]{2,4}[\/\-][A-Z]{2,4})\s+(\w+)\s+(.+)$/,
   ];
 
   for (const pattern of patterns) {
@@ -82,9 +89,9 @@ function parseCompositeField(compositeField: string): {
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
 
-    // Check for route pattern (XXX-XXX)
-    if (/^[A-Z]{2,4}-[A-Z]{2,4}$/.test(word)) {
-      route = word;
+    // Check for route pattern (XXX-XXX or XXX/XXX)
+    if (/^[A-Z]{2,4}[\/\-][A-Z]{2,4}$/.test(word)) {
+      route = word.replace(/\//g, "-"); // Convert slashes to hyphens for consistency
       // Customer name is everything before route
       if (i > 0) {
         customerName = words.slice(0, i).join(" ");
@@ -399,10 +406,12 @@ function parseNarrationField(narration: string): {
     }
   } else {
     // Fallback parsing for other formats
-    // Extract route patterns like DXB/SKT/DXB or LHE/JED/LHE
-    const routeMatch = narration.match(/([A-Z]{3}(?:\/[A-Z]{3}){1,4})/);
+    // Extract route patterns like DXB/SKT/DXB or LHE/JED/LHE or DXB-LHE
+    const routeMatch = narration.match(/([A-Z]{3}(?:[\/\-][A-Z]{3}){1,4})/);
     if (routeMatch) {
       route = routeMatch[1];
+      // Convert slashes to hyphens for consistency
+      route = route.replace(/\//g, "-");
     }
 
     // Extract PNR patterns - alphanumeric codes (5-8 characters)
@@ -544,18 +553,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     },
     async (req: Request & { file?: Express.Multer.File }, res) => {
+      let isResponseSent = false;
+      let timeoutId: NodeJS.Timeout | undefined;
+
+      // Cleanup function to clear timeout and prevent memory leaks
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = undefined;
+        }
+      };
+
+      // Handle response only once
+      const sendResponse = (status: number, data: any) => {
+        if (!isResponseSent) {
+          isResponseSent = true;
+          cleanup();
+          res.status(status).json(data);
+        }
+      };
+
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return sendResponse(400, { message: "No file uploaded" });
         }
 
-        // Add request timeout
-        const timeout = setTimeout(() => {
-          res.status(504).json({ message: "Request timeout" });
-        }, 25000); // 25 second timeout
+        // Add request timeout (shorter for serverless)
+        timeoutId = setTimeout(() => {
+          sendResponse(504, {
+            message: "Request timeout - File processing took too long",
+            code: "PROCESSING_TIMEOUT",
+          });
+        }, 15000); // 15 second timeout for serverless environment
 
         // Process the uploaded file with validation
         if (!req.file.buffer || req.file.buffer.length === 0) {
+          cleanup();
           throw new Error("Empty file uploaded");
         }
 
@@ -603,12 +636,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         await storage.createTravelDataBatch(travelDataItems);
 
-        res.json(processedData);
+        // Clear timeout and send response if not already sent
+        cleanup();
+        if (!isResponseSent) {
+          isResponseSent = true;
+          res.json(processedData);
+        }
       } catch (error) {
         console.error("Upload error:", error);
-        res.status(400).json({
-          message:
-            error instanceof Error ? error.message : "File processing failed",
+
+        // Determine the appropriate error status and message
+        let status = 400;
+        let message = "File processing failed";
+        let code = "PROCESSING_ERROR";
+
+        if (error instanceof Error) {
+          if (error.message.includes("size too large")) {
+            status = 413; // Payload Too Large
+            code = "FILE_TOO_LARGE";
+          } else if (error.message.includes("Invalid file type")) {
+            status = 415; // Unsupported Media Type
+            code = "INVALID_FILE_TYPE";
+          }
+          message = error.message;
+        }
+
+        sendResponse(status, {
+          message,
+          code,
+          details: process.env.NODE_ENV === "development" ? error : undefined,
         });
       }
     }
