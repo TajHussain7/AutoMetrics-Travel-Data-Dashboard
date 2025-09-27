@@ -48,8 +48,6 @@ export function normalizeDate(value: string | number | Date): string {
   return "";
 }
 
-export type FlightStatus = "Coming" | "Gone" | "Cancelled";
-
 export function formatDateToDDMMYYYY(dateStr: string): string {
   try {
     // Try to create a date object from the input string
@@ -80,31 +78,25 @@ export function formatDateToDDMMYYYY(dateStr: string): string {
   }
 }
 
+export type FlightStatus = "Coming" | "Gone" | "Cancelled";
+
 export function getFlightStatus(
-  row: Pick<TravelData, "flyingDate" | "flyingStatus">
+  row: Pick<TravelData, "flying_date" | "flying_status">
 ): FlightStatus {
-  // First, check if the status is explicitly set to cancelled by user
-  if (row.flyingStatus && row.flyingStatus.toLowerCase() === "cancelled") {
-    return "Cancelled";
+  if (!row.flying_date || row.flying_date.trim() === "") {
+    return "Coming";
   }
 
-  // No flying date, treat as invalid
-  if (!row.flyingDate || row.flyingDate.trim() === "") {
-    return "Coming"; // Default to Coming instead of Cancelled
-  }
-
-  // Parse the flying date
-  const date = new Date(row.flyingDate);
+  const date = new Date(row.flying_date);
   if (isNaN(date.getTime())) {
-    return "Coming"; // If date parsing fails, default to Coming
+    return "Coming";
   }
 
-  // Compare with today's date
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  date.setHours(0, 0, 0, 0);
+  // If the date has passed, always return "Gone" regardless of user-set status
+  if (new Date() > date) {
+    return "Gone";
+  }
 
-  // If date is in the past, it's automatically "Gone"
-  // If date is today or future, it's "Coming" (unless explicitly cancelled)
-  return date < today ? "Gone" : "Coming";
+  // For future dates, allow user to set status to "Cancelled", default to "Coming"
+  return row.flying_status === "Cancelled" ? "Cancelled" : "Coming";
 }

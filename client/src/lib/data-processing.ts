@@ -14,7 +14,7 @@ export interface DashboardMetrics {
     details: string;
     timestamp: Date;
   }>;
-  bookingStatus: {
+  booking_status: {
     confirmed: number;
     pending: number;
     cancelled: number;
@@ -32,7 +32,7 @@ export function calculateDashboardMetrics(
       activeAgents: 0,
       profitMargin: 0,
       recentActivity: [],
-      bookingStatus: { confirmed: 0, pending: 0, cancelled: 0 },
+      booking_status: { confirmed: 0, pending: 0, cancelled: 0 },
     };
   }
 
@@ -49,6 +49,7 @@ export function calculateDashboardMetrics(
 
   const totalProfit = data.reduce((sum, item) => {
     const profit = parseFloat(item.profit?.toString() || "0");
+    // Include all profits, whether positive or negative
     return sum + profit;
   }, 0);
 
@@ -66,14 +67,14 @@ export function calculateDashboardMetrics(
       id: item.id,
       type: "booking" as const,
       message: `New booking processed`,
-      details: `PNR: ${item.pnr || "N/A"} - ${item.customerName || "Unknown"}`,
+      details: `PNR: ${item.pnr || "N/A"} - ${item.customer_name || "Unknown"}`,
       timestamp: new Date(item.createdAt!),
     }));
 
   // Calculate booking status distribution
-  const bookingStatus = data.reduce(
+  const booking_status = data.reduce(
     (acc, item) => {
-      const status = item.bookingStatus?.toLowerCase() || "pending";
+      const status = item.booking_status?.toLowerCase() || "pending";
       if (status === "confirmed") acc.confirmed++;
       else if (status === "cancelled") acc.cancelled++;
       else acc.pending++;
@@ -89,20 +90,20 @@ export function calculateDashboardMetrics(
     activeAgents,
     profitMargin,
     recentActivity,
-    bookingStatus,
+    booking_status,
   };
 }
 
 export interface ChartData {
   monthlyRevenue: Array<{
     month: string;
-    customerRate: number;
-    companyRate: number;
+    customer_rate: number;
+    company_rate: number;
   }>;
   profitTrends: Array<{
     pnr: string;
     profit: number;
-    customerName: string;
+    customer_name: string;
   }>;
   routePerformance: Array<{ route: string; bookings: number; revenue: number }>;
 }
@@ -124,18 +125,18 @@ export function prepareChartData(data: TravelData[]): ChartData {
 
       if (!acc[month]) {
         acc[month] = {
-          customerRate: 0,
-          companyRate: 0,
+          customer_rate: 0,
+          company_rate: 0,
           count: 0,
         };
       }
 
-      const customerRate = parseFloat(item.customerRate?.toString() || "0");
-      const companyRate = parseFloat(item.companyRate?.toString() || "0");
+      const customer_rate = parseFloat(item.customer_rate?.toString() || "0");
+      const company_rate = parseFloat(item.company_rate?.toString() || "0");
 
-      if (customerRate > 0 || companyRate > 0) {
-        acc[month].customerRate += customerRate;
-        acc[month].companyRate += companyRate;
+      if (customer_rate > 0 || company_rate > 0) {
+        acc[month].customer_rate += customer_rate;
+        acc[month].company_rate += company_rate;
         acc[month].count++;
       }
 
@@ -144,8 +145,8 @@ export function prepareChartData(data: TravelData[]): ChartData {
     {} as Record<
       string,
       {
-        customerRate: number;
-        companyRate: number;
+        customer_rate: number;
+        company_rate: number;
         count: number;
       }
     >
@@ -153,9 +154,10 @@ export function prepareChartData(data: TravelData[]): ChartData {
 
   const monthlyRevenue = Object.entries(monthlyData).map(([month, data]) => ({
     month,
-    customerRate:
-      data.count > 0 ? Math.round(data.customerRate / data.count) : 0,
-    companyRate: data.count > 0 ? Math.round(data.companyRate / data.count) : 0,
+    customer_rate:
+      data.count > 0 ? Math.round(data.customer_rate / data.count) : 0,
+    company_rate:
+      data.count > 0 ? Math.round(data.company_rate / data.count) : 0,
   }));
 
   // Agent performance data
@@ -216,7 +218,7 @@ export function prepareChartData(data: TravelData[]): ChartData {
     .map((item) => ({
       pnr: item.pnr || "N/A",
       profit: parseFloat(item.profit?.toString() || "0"),
-      customerName: item.customerName || "Unknown",
+      customer_name: item.customer_name || "Unknown",
     }));
 
   return {
@@ -240,7 +242,7 @@ export function filterTravelData(
     const searchLower = filters.search.toLowerCase();
     filtered = filtered.filter(
       (item) =>
-        item.customerName?.toLowerCase().includes(searchLower) ||
+        item.customer_name?.toLowerCase().includes(searchLower) ||
         item.pnr?.toLowerCase().includes(searchLower) ||
         item.route?.toLowerCase().includes(searchLower) ||
         item.voucher?.toLowerCase().includes(searchLower)
@@ -250,7 +252,7 @@ export function filterTravelData(
   if (filters.status && filters.status !== "All Status") {
     filtered = filtered.filter(
       (item) =>
-        item.bookingStatus?.toLowerCase() === filters.status?.toLowerCase()
+        item.booking_status?.toLowerCase() === filters.status?.toLowerCase()
     );
   }
 

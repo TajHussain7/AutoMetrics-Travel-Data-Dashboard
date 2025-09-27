@@ -112,14 +112,14 @@ export default function ChartsGrid() {
                   <Legend />
                   <Line
                     type="monotone"
-                    dataKey="customerRate"
+                    dataKey="customer_rate"
                     stroke={COLORS.blue}
                     strokeWidth={2}
                     name="Customer Rate"
                   />
                   <Line
                     type="monotone"
-                    dataKey="companyRate"
+                    dataKey="company_rate"
                     stroke={COLORS.orange}
                     strokeWidth={2}
                     name="Company Rate"

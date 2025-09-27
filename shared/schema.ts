@@ -3,7 +3,7 @@ import { z } from "zod";
 // Base interfaces
 export interface TravelData {
   id: string;
-  sessionId: string;
+  session_id: string;
   date: string;
   voucher: string;
   reference?: string;
@@ -11,23 +11,23 @@ export interface TravelData {
   debit?: number;
   credit?: number;
   balance?: number;
-  customerName?: string;
+  customer_name?: string;
   route?: string;
   pnr?: string;
-  flyingDate?: string;
-  flyingStatus?: string;
-  customerRate?: number;
-  companyRate?: number;
+  flying_date?: string;
+  flying_status?: string;
+  customer_rate?: number;
+  company_rate?: number;
   profit?: number;
-  bookingStatus: string;
-  paymentStatus: string;
+  booking_status: string;
+  payment_status: string;
   createdAt: Date;
 }
 
 export interface UploadSession {
   id: string;
   filename: string;
-  openingBalance?: {
+  opening_balance?: {
     date: string;
     amount: number;
   };
@@ -45,16 +45,16 @@ export const insertTravelDataSchema = z.object({
   debit: z.number().optional(),
   credit: z.number().optional(),
   balance: z.number().optional(),
-  customerName: z.string().optional(),
+  customer_name: z.string().optional(),
   route: z.string().optional(),
   pnr: z.string().optional(),
-  flyingDate: z.string().optional(),
-  flyingStatus: z.string().optional(),
-  customerRate: z.number().optional(),
-  companyRate: z.number().optional(),
+  flying_date: z.string().optional(),
+  flying_status: z.string().optional(),
+  customer_rate: z.number().optional(),
+  company_rate: z.number().optional(),
   profit: z.number().optional(),
-  bookingStatus: z.string().default("Pending"),
-  paymentStatus: z.string().default("Pending"),
+  booking_status: z.string().default("Pending"),
+  payment_status: z.string().default("Pending"),
 });
 
 export const insertUploadSessionSchema = z.object({
@@ -71,6 +71,7 @@ export const insertUploadSessionSchema = z.object({
 // Additional schemas for API responses
 export const uploadResponseSchema = z.object({
   sessionId: z.string(),
+  filename: z.string(),
   totalRecords: z.number(),
   openingBalance: z
     .object({
@@ -87,16 +88,16 @@ export const uploadResponseSchema = z.object({
       debit: z.number().nullable(),
       credit: z.number().nullable(),
       balance: z.number().nullable(),
-      customerName: z.string().nullable(),
+      customer_name: z.string().nullable(),
       route: z.string().nullable(),
       pnr: z.string().nullable(),
-      flyingDate: z.string().nullable(),
-      flyingStatus: z.string().nullable(),
-      customerRate: z.number().nullable(),
-      companyRate: z.number().nullable(),
+      flying_date: z.string().nullable(),
+      flying_status: z.string().nullable(),
+      customer_rate: z.number().nullable(),
+      company_rate: z.number().nullable(),
       profit: z.number().nullable(),
-      bookingStatus: z.string(),
-      paymentStatus: z.string(),
+      booking_status: z.string(),
+      payment_status: z.string(),
     })
   ),
 });

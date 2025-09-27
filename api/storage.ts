@@ -5,54 +5,88 @@ import {
   createUploadSession,
 } from "./supabase";
 import type { TravelData, UploadSession } from "@shared/schema";
+import type { Database } from "./database.types";
+
+type Tables = Database["public"]["Tables"];
+type TravelDataRow = Tables["travel_data"]["Row"];
+type TravelDataInsert = Tables["travel_data"]["Insert"];
+type TravelDataUpdate = Tables["travel_data"]["Update"];
+type UploadSessionRow = Tables["upload_sessions"]["Row"];
+type UploadSessionInsert = Tables["upload_sessions"]["Insert"];
 
 class SupabaseStorage {
   async createTravelDataBatch(
-    data: Partial<TravelData>[]
-  ): Promise<TravelData[]> {
+    data: TravelDataInsert[]
+  ): Promise<TravelDataRow[]> {
     return createBatchTravelData(data);
   }
 
-  async getTravelDataBySession(sessionId: string): Promise<TravelData[]> {
+  async getTravelDataBySession(sessionId: string): Promise<TravelDataRow[]> {
     return getTravelDataBySession(sessionId);
   }
 
   async createUploadSession(
     sessionData: Partial<UploadSession>
-  ): Promise<UploadSession> {
+  ): Promise<UploadSessionRow> {
     return createUploadSession(sessionData);
   }
 
   async updateTravelData(
     id: string,
-    updates: Partial<TravelData>
-  ): Promise<TravelData> {
-    const { data, error } = await supabase
+    updates: TravelDataUpdate
+  ): Promise<TravelDataRow> {
+    const { data, error } = (await supabase
       .from("travel_data")
-      .update(updates)
+      .update(updates as any)
       .eq("id", id)
       .select()
-      .single();
+      .single()) as unknown as {
+      data: TravelDataRow | null;
+      error: Error | null;
+    };
 
     if (error) throw error;
+    if (!data) throw new Error("Travel data not found");
     return data;
   }
 
   async deleteTravelData(id: string): Promise<void> {
-    const { error } = await supabase.from("travel_data").delete().eq("id", id);
+    const { error } = (await supabase
+      .from("travel_data")
+      .delete()
+      .eq("id", id)) as unknown as {
+      error: Error | null;
+    };
 
     if (error) throw error;
   }
 
-  async getRecentUploadSessions(): Promise<UploadSession[]> {
-    const { data, error } = await supabase
+  async getUploadSessionsForUser(userId: string): Promise<UploadSessionRow[]> {
+    const { data, error } = (await supabase
       .from("upload_sessions")
-      .select("*")
+      .select()
       .order("created_at", { ascending: false })
-      .limit(10);
+      .eq("user_id", userId)) as unknown as {
+      data: UploadSessionRow[] | null;
+      error: Error | null;
+    };
 
     if (error) throw error;
-    return data;
+    return data || [];
+  }
+
+  async getRecentUploadSessions(): Promise<UploadSessionRow[]> {
+    const { data, error } = (await supabase
+      .from("upload_sessions")
+      .select()
+      .order("created_at", { ascending: false })
+      .limit(10)) as unknown as {
+      data: UploadSessionRow[] | null;
+      error: Error | null;
+    };
+
+    if (error) throw error;
+    return data || [];
   }
 }
 

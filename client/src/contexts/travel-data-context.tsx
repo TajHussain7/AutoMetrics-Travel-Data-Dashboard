@@ -79,7 +79,7 @@ export function TravelDataProvider({
           filename: "uploaded-file",
           processedAt: new Date(),
           totalRecords: travelData.length.toString(),
-          openingBalance: uploadResponse.openingBalance || undefined,
+          opening_balance: uploadResponse.openingBalance || undefined,
         },
       });
     }

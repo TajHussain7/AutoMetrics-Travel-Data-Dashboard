@@ -47,13 +47,13 @@ const upload = multer({
 });
 
 function parseCompositeField(compositeField: string): {
-  customerName: string | null;
+  customer_name: string | null;
   route: string | null;
   pnr: string | null;
-  flyingDate: string | null;
+  flying_date: string | null;
 } {
   if (!compositeField || typeof compositeField !== "string") {
-    return { customerName: null, route: null, pnr: null, flyingDate: null };
+    return { customer_name: null, route: null, pnr: null, flying_date: null };
   }
 
   // Pattern: "Customer Name ROUTE PNR Date"
@@ -71,20 +71,20 @@ function parseCompositeField(compositeField: string): {
     const match = compositeField.trim().match(pattern);
     if (match) {
       return {
-        customerName: match[1]?.trim() || null,
+        customer_name: match[1]?.trim() || null,
         route: match[2]?.trim() || null,
         pnr: match[3]?.trim() || null,
-        flyingDate: match[4]?.trim() || null,
+        flying_date: match[4]?.trim() || null,
       };
     }
   }
 
   // Fallback: try to extract what we can
   const words = compositeField.trim().split(/\s+/);
-  let customerName = null;
+  let customer_name = null;
   let route = null;
   let pnr = null;
-  let flyingDate = null;
+  let flying_date = null;
 
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
@@ -94,7 +94,7 @@ function parseCompositeField(compositeField: string): {
       route = word.replace(/\//g, "-"); // Convert slashes to hyphens for consistency
       // Customer name is everything before route
       if (i > 0) {
-        customerName = words.slice(0, i).join(" ");
+        customer_name = words.slice(0, i).join(" ");
       }
       continue;
     }
@@ -107,19 +107,19 @@ function parseCompositeField(compositeField: string): {
 
     // Check for date pattern
     if (/^\d{4}-\d{2}-\d{2}$/.test(word)) {
-      flyingDate = word;
+      flying_date = word;
       continue;
     }
   }
 
-  return { customerName, route, pnr, flyingDate };
+  return { customer_name, route, pnr, flying_date };
 }
 
-function calculateFlyingStatus(flyingDate: string | null): string {
-  if (!flyingDate) return "Unknown";
+function calculateFlyingStatus(flying_date: string | null): string {
+  if (!flying_date) return "Unknown";
 
   const today = new Date();
-  const flying = new Date(flyingDate);
+  const flying = new Date(flying_date);
 
   today.setHours(0, 0, 0, 0);
   flying.setHours(0, 0, 0, 0);
@@ -267,34 +267,34 @@ function processRawLedgerData(
       continue;
     } // Step 4: Parse travel information from the correct column
     const narrationStr = narration?.toString() || "";
-    let customerName = null;
+    let customer_name = null;
     let route = null;
     let pnr = null;
-    let flyingDate = null;
+    let flying_date = null;
 
     // In this CSV format, SALES info is in the 5th column (position 4)
     const salesInfo = salesOrDebitStr?.toString() || "";
 
     if (salesInfo && salesInfo.toUpperCase().includes("SALES")) {
       const parsed = parseNarrationField(salesInfo);
-      customerName = parsed.customerName;
+      customer_name = parsed.customer_name;
       route = parsed.route;
       pnr = parsed.pnr;
-      flyingDate = parsed.flyingDate;
+      flying_date = parsed.flying_date;
     } else if (compositeField && compositeField.toString().trim()) {
       // Fallback to composite field if available
       const parsed = parseCompositeField(compositeField.toString());
-      customerName = parsed.customerName;
+      customer_name = parsed.customer_name;
       route = parsed.route;
       pnr = parsed.pnr;
-      flyingDate = parsed.flyingDate;
+      flying_date = parsed.flying_date;
     } else {
       // Fallback to narration field
       const parsed = parseNarrationField(narrationStr);
-      customerName = parsed.customerName;
+      customer_name = parsed.customer_name;
       route = parsed.route;
       pnr = parsed.pnr;
-      flyingDate = parsed.flyingDate;
+      flying_date = parsed.flying_date;
     }
 
     // Parse amounts that belong to ledger-only fields
@@ -325,11 +325,11 @@ function processRawLedgerData(
         : null;
 
     // Step 5: Derive flying status
-    const flyingStatus = calculateFlyingStatus(flyingDate);
+    const flying_status = calculateFlyingStatus(flying_date);
 
     // Step 6: Set report-only fields to 0 by default (user will fill later)
-    const customerRate = 0;
-    const companyRate = 0;
+    const customer_rate = 0;
+    const company_rate = 0;
     const profit = 0;
 
     processedData.push({
@@ -340,21 +340,22 @@ function processRawLedgerData(
       debit,
       credit,
       balance,
-      customerName,
+      customer_name,
       route,
       pnr,
-      flyingDate,
-      flyingStatus,
-      customerRate,
-      companyRate,
+      flying_date,
+      flying_status,
+      customer_rate,
+      company_rate,
       profit,
-      bookingStatus: "Pending", // Default as per guidelines
-      paymentStatus: "Unpaid", // Default as per guidelines
+      booking_status: "Pending", // Default as per guidelines
+      payment_status: "Unpaid", // Default as per guidelines
     });
   }
 
   return {
     sessionId: "", // Will be set later
+    filename,
     totalRecords: processedData.length,
     openingBalance,
     entries: processedData,
@@ -362,19 +363,19 @@ function processRawLedgerData(
 }
 
 function parseNarrationField(narration: string): {
-  customerName: string | null;
+  customer_name: string | null;
   route: string | null;
   pnr: string | null;
-  flyingDate: string | null;
+  flying_date: string | null;
 } {
   if (!narration || typeof narration !== "string") {
-    return { customerName: null, route: null, pnr: null, flyingDate: null };
+    return { customer_name: null, route: null, pnr: null, flying_date: null };
   }
 
-  let customerName = null;
+  let customer_name = null;
   let route = null;
   let pnr = null;
-  let flyingDate = null;
+  let flying_date = null;
 
   // Handle SALES entries: "SALES - MR SULEMAN SAFDAR - DXB/SKT/DXB - 94A63T - 06/12/2024"
   if (narration.toUpperCase().includes("SALES")) {
@@ -382,7 +383,7 @@ function parseNarrationField(narration: string): {
 
     if (parts.length >= 5) {
       // Extract customer name (2nd part, remove title)
-      customerName =
+      customer_name =
         parts[1]?.trim().replace(/^(MR|MRS|MISS|MS)\.?\s+/i, "") || null;
 
       // Extract route (3rd part)
@@ -397,7 +398,7 @@ function parseNarrationField(narration: string): {
         const dateParts = datePart.split("/");
         if (dateParts.length === 3) {
           // Convert DD/MM/YYYY to YYYY-MM-DD
-          flyingDate = `${dateParts[2]}-${dateParts[1].padStart(
+          flying_date = `${dateParts[2]}-${dateParts[1].padStart(
             2,
             "0"
           )}-${dateParts[0].padStart(2, "0")}`;
@@ -426,7 +427,7 @@ function parseNarrationField(narration: string): {
       const dateParts = dateMatch[1].split("/");
       if (dateParts.length === 3) {
         // Convert DD/MM/YYYY to YYYY-MM-DD
-        flyingDate = `${dateParts[2]}-${dateParts[1].padStart(
+        flying_date = `${dateParts[2]}-${dateParts[1].padStart(
           2,
           "0"
         )}-${dateParts[0].padStart(2, "0")}`;
@@ -434,7 +435,7 @@ function parseNarrationField(narration: string): {
     }
   }
 
-  return { customerName, route, pnr, flyingDate };
+  return { customer_name, route, pnr, flying_date };
 }
 
 function processStandardTravelData(
@@ -494,16 +495,16 @@ function processStandardTravelData(
     if (!date || !voucher) continue; // Skip rows without essential data
 
     // Parse composite field
-    const { customerName, route, pnr, flyingDate } = parseCompositeField(
+    const { customer_name, route, pnr, flying_date } = parseCompositeField(
       compositeField as string
     );
 
     // Calculate derived fields
-    const flyingStatus = calculateFlyingStatus(flyingDate);
+    const flying_status = calculateFlyingStatus(flying_date);
 
     // Report-only fields should default to 0 (user will fill later)
-    const customerRate = 0;
-    const companyRate = 0;
+    const customer_rate = 0;
+    const company_rate = 0;
     const profit = 0;
 
     processedData.push({
@@ -514,21 +515,23 @@ function processStandardTravelData(
       debit: debit ? parseFloat(debit.toString()) : null,
       credit: credit ? parseFloat(credit.toString()) : null,
       balance: balance ? parseFloat(balance.toString()) : null,
-      customerName,
+      customer_name,
       route,
       pnr,
-      flyingDate,
-      flyingStatus,
-      customerRate,
-      companyRate,
+      flying_date,
+      flying_status,
+      customer_rate,
+      company_rate,
       profit,
-      bookingStatus: "Pending",
+      booking_status: "Pending",
+      payment_status: "Pending",
       paymentStatus: "Pending",
     });
   }
 
   return {
     sessionId: "", // Will be set later
+    filename,
     totalRecords: processedData.length,
     openingBalance,
     entries: processedData,
@@ -601,15 +604,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Ensure report-only fields are zeroed by default
         processedData.entries = processedData.entries.map((entry) => ({
           ...entry,
-          customerRate: 0,
-          companyRate: 0,
+          customer_rate: 0,
+          company_rate: 0,
           profit: 0,
         }));
 
         // Create upload session
         const session = await storage.createUploadSession({
           filename: req.file.originalname,
-          openingBalance: processedData.openingBalance || undefined,
+          opening_balance: processedData.openingBalance || undefined,
           totalRecords: processedData.totalRecords.toString(),
         });
 
@@ -618,20 +621,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Save travel data - convert numbers to strings as per schema
         const travelDataItems = processedData.entries.map((entry) => ({
           ...entry,
-          sessionId: session.id,
+          session_id: session.id,
           debit: entry.debit || undefined,
           credit: entry.credit || undefined,
           balance: entry.balance || undefined,
-          customerRate: entry.customerRate || undefined,
-          companyRate: entry.companyRate || undefined,
+          customer_rate: entry.customer_rate || undefined,
+          company_rate: entry.company_rate || undefined,
           profit: entry.profit || undefined,
           reference: entry.reference || undefined,
           narration: entry.narration || undefined,
-          customerName: entry.customerName || undefined,
+          customer_name: entry.customer_name || undefined,
           route: entry.route || undefined,
           pnr: entry.pnr || undefined,
-          flyingDate: entry.flyingDate || undefined,
-          flyingStatus: entry.flyingStatus || undefined,
+          flying_date: entry.flying_date || undefined,
+          flying_status: entry.flying_status || undefined,
         }));
 
         await storage.createTravelDataBatch(travelDataItems);
@@ -690,13 +693,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert string numbers to actual numbers before validation
       const parsedBody = {
         ...req.body,
-        customerRate:
-          req.body.customerRate != null
-            ? Number(req.body.customerRate)
+        customer_rate:
+          req.body.customer_rate != null
+            ? Number(req.body.customer_rate)
             : undefined,
-        companyRate:
-          req.body.companyRate != null
-            ? Number(req.body.companyRate)
+        company_rate:
+          req.body.company_rate != null
+            ? Number(req.body.company_rate)
             : undefined,
         profit: req.body.profit != null ? Number(req.body.profit) : undefined,
       };

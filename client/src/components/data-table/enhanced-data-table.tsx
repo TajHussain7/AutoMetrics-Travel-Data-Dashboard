@@ -42,10 +42,10 @@ export default function EnhancedDataTable() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   // Local edit state for smoother rate editing
-  const [editedCustomerRate, setEditedCustomerRate] = useState<
+  const [editedCustomerRates, setEditedCustomerRates] = useState<
     Record<string, string>
   >({});
-  const [editedCompanyRate, setEditedCompanyRate] = useState<
+  const [editedCompanyRates, setEditedCompanyRates] = useState<
     Record<string, string>
   >({});
 
@@ -185,53 +185,53 @@ export default function EnhancedDataTable() {
   );
 
   const getEffectiveCustomer = (row: TravelData) =>
-    editedCustomerRate[row.id] ?? row.customerRate?.toString() ?? "0";
+    editedCustomerRates[row.id] ?? row.customer_rate?.toString() ?? "0";
   const getEffectiveCompany = (row: TravelData) =>
-    editedCompanyRate[row.id] ?? row.companyRate?.toString() ?? "0";
+    editedCompanyRates[row.id] ?? row.company_rate?.toString() ?? "0";
 
   const commitRates = async (row: TravelData) => {
     try {
       // Parse edited values or use existing values
-      const customerRate = Math.max(
+      const customer_rate = Math.max(
         0,
-        parseFloat(editedCustomerRate[row.id] || "0")
+        parseFloat(editedCustomerRates[row.id] || "0")
       );
-      const companyRate = Math.max(
+      const company_rate = Math.max(
         0,
-        parseFloat(editedCompanyRate[row.id] || "0")
+        parseFloat(editedCompanyRates[row.id] || "0")
       );
 
-      // Calculate profit
-      const profit = Math.max(0, customerRate - companyRate);
+      // Calculate profit (allowing negative values)
+      const profit = customer_rate - company_rate;
 
       // Round all values - sending as numbers to match the schema
-      const roundedCustomerRate = Math.round(customerRate);
-      const roundedCompanyRate = Math.round(companyRate);
-      const roundedProfit = Math.round(profit);
+      const rounded_customer_rate = Math.round(customer_rate);
+      const rounded_company_rate = Math.round(company_rate);
+      const rounded_profit = Math.round(profit);
 
       console.log("Updating rates:", {
-        customerRate: roundedCustomerRate,
-        companyRate: roundedCompanyRate,
-        profit: roundedProfit,
+        customer_rate: rounded_customer_rate,
+        company_rate: rounded_company_rate,
+        profit: rounded_profit,
       });
 
       // Update the data with proper number types
       await updateMutation.mutateAsync({
         id: row.id,
         data: {
-          customerRate: roundedCustomerRate,
-          companyRate: roundedCompanyRate,
-          profit: roundedProfit,
+          customer_rate: rounded_customer_rate,
+          company_rate: rounded_company_rate,
+          profit: rounded_profit,
         },
       });
 
       // Clear edited states after successful update
-      setEditedCustomerRate((prev) => {
+      setEditedCustomerRates((prev: Record<string, string>) => {
         const next = { ...prev };
         delete next[row.id];
         return next;
       });
-      setEditedCompanyRate((prev) => {
+      setEditedCompanyRates((prev: Record<string, string>) => {
         const next = { ...prev };
         delete next[row.id];
         return next;
@@ -259,13 +259,13 @@ export default function EnhancedDataTable() {
       });
 
       // Revert local state on error
-      setEditedCustomerRate((prev) => ({
+      setEditedCustomerRates((prev: Record<string, string>) => ({
         ...prev,
-        [row.id]: (row.customerRate ?? 0).toString(),
+        [row.id]: (row.customer_rate ?? 0).toString(),
       }));
-      setEditedCompanyRate((prev) => ({
+      setEditedCompanyRates((prev: Record<string, string>) => ({
         ...prev,
-        [row.id]: (row.companyRate ?? 0).toString(),
+        [row.id]: (row.company_rate ?? 0).toString(),
       }));
     }
   };
@@ -289,7 +289,7 @@ export default function EnhancedDataTable() {
     await updateMutation.mutateAsync({
       id: row.id,
       data: {
-        flyingStatus: value === "Cancelled" ? "Cancelled" : undefined,
+        flying_status: value === "Cancelled" ? "Cancelled" : undefined,
       },
     });
   };
@@ -393,7 +393,7 @@ export default function EnhancedDataTable() {
                   const selectedCount = itemsToDelete.length;
                   const itemNames = itemsToDelete.map((id) => {
                     const item = filteredAndSortedData.find((d) => d.id === id);
-                    return item?.customerName || "Unknown";
+                    return item?.customer_name || "Unknown";
                   });
 
                   const displayNames =
@@ -422,7 +422,7 @@ export default function EnhancedDataTable() {
                                   itemsToDelete.map((id) =>
                                     updateMutation.mutateAsync({
                                       id,
-                                      data: { bookingStatus: "Deleted" },
+                                      data: { booking_status: "Deleted" },
                                     })
                                   )
                                 );
@@ -501,7 +501,7 @@ export default function EnhancedDataTable() {
                   <SortButton column="voucher">Voucher</SortButton>
                 </th>
                 <th className="px-4 py-4 text-left min-w-[140px]">
-                  <SortButton column="customerName">Customer</SortButton>
+                  <SortButton column="customer_name">Customer</SortButton>
                 </th>
                 <th className="px-4 py-4 text-left min-w-[120px]">
                   <SortButton column="route">Route</SortButton>
@@ -510,7 +510,7 @@ export default function EnhancedDataTable() {
                   <SortButton column="pnr">PNR</SortButton>
                 </th>
                 <th className="px-4 py-4 text-left min-w-[120px]">
-                  <SortButton column="flyingDate">Flying Date</SortButton>
+                  <SortButton column="flying_date">Flying Date</SortButton>
                 </th>
                 <th className="px-4 py-4 text-left min-w-[120px]">
                   Flight Status
@@ -525,10 +525,10 @@ export default function EnhancedDataTable() {
                   <SortButton column="balance">Balance</SortButton>
                 </th>
                 <th className="px-4 py-4 text-right min-w-[130px]">
-                  <SortButton column="customerRate">Customer Rate</SortButton>
+                  <SortButton column="customer_rate">Customer Rate</SortButton>
                 </th>
                 <th className="px-4 py-4 text-right font-semibold">
-                  <SortButton column="companyRate">Company Rate</SortButton>
+                  <SortButton column="company_rate">Company Rate</SortButton>
                 </th>
                 <th className="px-4 py-4 text-right font-semibold">
                   <SortButton column="profit">Profit</SortButton>
@@ -575,7 +575,7 @@ export default function EnhancedDataTable() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="font-medium text-slate-900">
-                        {item.customerName || "—"}
+                        {item.customer_name || "—"}
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -589,7 +589,7 @@ export default function EnhancedDataTable() {
                       </code>
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-700">
-                      {item.flyingDate ? formatDate(item.flyingDate) : "—"}
+                      {item.flying_date ? formatDate(item.flying_date) : "—"}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {flightStatus === "Gone" ? (
@@ -662,16 +662,18 @@ export default function EnhancedDataTable() {
                         <Input
                           type="number"
                           value={
-                            editedCustomerRate[item.id] ??
-                            (!item.customerRate || item.customerRate === 0
+                            editedCustomerRates[item.id] ??
+                            (!item.customer_rate || item.customer_rate === 0
                               ? ""
-                              : formatNumber(item.customerRate))
+                              : formatNumber(item.customer_rate))
                           }
                           onChange={(e) =>
-                            setEditedCustomerRate((s) => ({
-                              ...s,
-                              [item.id]: e.target.value,
-                            }))
+                            setEditedCustomerRates(
+                              (s: Record<string, string>) => ({
+                                ...s,
+                                [item.id]: e.target.value,
+                              })
+                            )
                           }
                           onBlur={() => commitRates(item)}
                           onKeyDown={(e) => {
@@ -690,15 +692,13 @@ export default function EnhancedDataTable() {
                         <Input
                           type="number"
                           value={
-                            editedCompanyRate[item.id] ??
-                            (!item.companyRate ||
-                            item.companyRate === "0" ||
-                            item.companyRate === ""
+                            editedCompanyRates[item.id] ??
+                            (!item.company_rate || item.company_rate === 0
                               ? ""
-                              : formatNumber(item.companyRate))
+                              : item.company_rate.toString())
                           }
                           onChange={(e) =>
-                            setEditedCompanyRate((s) => ({
+                            setEditedCompanyRates((s) => ({
                               ...s,
                               [item.id]: e.target.value,
                             }))

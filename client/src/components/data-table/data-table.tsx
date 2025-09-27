@@ -67,7 +67,9 @@ export default function DataTable() {
     try {
       await updateMutation.mutateAsync({
         id,
-        data: { flyingStatus: newStatus === "Cancelled" ? "Cancelled" : null },
+        data: {
+          flying_status: newStatus, // directly set the new status
+        },
       });
     } catch (error) {
       console.error("Failed to update status:", error);
@@ -187,10 +189,10 @@ export default function DataTable() {
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700"
-                  onClick={() => handleSort("customerName")}
+                  onClick={() => handleSort("customer_name")}
                 >
                   Customer{" "}
-                  {sortBy === "customerName" &&
+                  {sortBy === "customer_name" &&
                     (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
                 <th
@@ -205,10 +207,11 @@ export default function DataTable() {
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700"
-                  onClick={() => handleSort("flyingDate")}
+                  onClick={() => handleSort("flying_date")}
                 >
                   Flying Date{" "}
-                  {sortBy === "flyingDate" && (sortOrder === "asc" ? "↑" : "↓")}
+                  {sortBy === "flying_date" &&
+                    (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Flight Status
@@ -242,7 +245,7 @@ export default function DataTable() {
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center mr-3">
                         <span className="text-xs font-medium text-slate-600">
-                          {row.customerName
+                          {row.customer_name
                             ?.split(" ")
                             .map((n) => n[0])
                             .join("")
@@ -251,7 +254,7 @@ export default function DataTable() {
                       </div>
                       <div>
                         <div className="text-sm font-medium text-slate-800">
-                          {row.customerName || "Unknown"}
+                          {row.customer_name || "Unknown"}
                         </div>
                         <div className="text-sm text-slate-500">
                           {row.voucher}
@@ -272,9 +275,9 @@ export default function DataTable() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="space-y-1">
                       <div className="text-sm text-slate-800">
-                        {row.flyingDate
+                        {row.flying_date
                           ? (() => {
-                              const date = new Date(row.flyingDate);
+                              const date = new Date(row.flying_date);
                               if (!isNaN(date.getTime())) {
                                 const day = date
                                   .getDate()
@@ -286,39 +289,49 @@ export default function DataTable() {
                                 const year = date.getFullYear();
                                 return `${day}/${month}/${year}`;
                               }
-                              return row.flyingDate;
+                              return row.flying_date;
                             })()
                           : "–"}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {(() => {
-                      const status = getFlightStatus(row);
-                      const cls =
-                        status === "Coming"
-                          ? "bg-blue-50 text-blue-700"
-                          : status === "Gone"
-                          ? "bg-slate-100 text-slate-700"
-                          : "bg-red-100 text-red-700";
-                      return (
-                        <span className={cn("text-xs px-2 py-1 rounded", cls)}>
-                          {status}
-                        </span>
-                      );
-                    })()}
+                    <Select
+                      value={row.flying_status || "Coming"}
+                      onValueChange={(newStatus) =>
+                        handleStatusChange(row.id, newStatus)
+                      }
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Coming">
+                          <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700">
+                            Coming
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Gone">
+                          <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-700">
+                            Gone
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Cancelled">
+                          <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-700">
+                            Cancelled
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {row.profit ? (
+                    {row.profit != null ? (
                       <span
                         className={
-                          parseFloat(row.profit) >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                          row.profit >= 0 ? "text-green-600" : "text-red-600"
                         }
                       >
-                        {parseFloat(row.profit) >= 0 ? "+" : ""}$
-                        {parseFloat(row.profit).toFixed(2)}
+                        {row.profit >= 0 ? "+" : ""}${row.profit.toFixed(2)}
                       </span>
                     ) : (
                       <span className="text-slate-400">–</span>

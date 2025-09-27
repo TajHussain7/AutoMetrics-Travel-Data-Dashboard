@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { TravelData, UploadResponse } from "@shared/schema";
+import type { TravelData, UploadResponse, UploadSession } from "@shared/schema";
 import { useTravelData as useTravelDataContext } from "@/contexts/travel-data-context";
 import { saveToStorage } from "@/lib/local-storage";
 
@@ -39,7 +39,7 @@ export function useUploadFile() {
       // Convert entries to TravelData format
       const travelData: TravelData[] = data.entries.map((entry) => ({
         id: crypto.randomUUID(), // Generate unique ID for each entry
-        sessionId: data.sessionId,
+        session_id: data.sessionId,
         createdAt: new Date(),
         date: entry.date,
         voucher: entry.voucher,
@@ -48,16 +48,16 @@ export function useUploadFile() {
         debit: entry.debit || undefined,
         credit: entry.credit || undefined,
         balance: entry.balance || undefined,
-        customerName: entry.customerName || undefined,
+        customer_name: entry.customer_name || undefined,
         route: entry.route || undefined,
         pnr: entry.pnr || undefined,
-        flyingDate: entry.flyingDate || undefined,
-        flyingStatus: entry.flyingStatus || undefined,
-        customerRate: entry.customerRate || undefined,
-        companyRate: entry.companyRate || undefined,
+        flying_date: entry.flying_date || undefined,
+        flying_status: entry.flying_status || undefined,
+        customer_rate: entry.customer_rate || undefined,
+        company_rate: entry.company_rate || undefined,
         profit: entry.profit || undefined,
-        bookingStatus: entry.bookingStatus || "Pending",
-        paymentStatus: entry.paymentStatus || "Pending",
+        booking_status: entry.booking_status || "Pending",
+        payment_status: entry.payment_status || "Pending",
       }));
 
       // Save to localStorage
@@ -65,10 +65,10 @@ export function useUploadFile() {
         travelData,
         uploadSession: {
           id: data.sessionId,
-          filename: "uploaded-file",
+          filename: data.filename || "Uploaded File",
           processedAt: new Date(),
           totalRecords: travelData.length.toString(),
-          openingBalance: data.openingBalance || undefined,
+          opening_balance: data.openingBalance || undefined,
         },
       });
 
@@ -150,7 +150,22 @@ export function useDeleteTravelData() {
 }
 
 export function useUploadSessions() {
-  return useQuery({
+  return useQuery<UploadSession[]>({
     queryKey: ["/api/upload-sessions"],
+    queryFn: async () => {
+      const response = await fetch("/api/upload-sessions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch upload sessions");
+      }
+      const data: any[] = await response.json();
+      // Map database fields to UploadSession interface
+      return data.map((session) => ({
+        id: session.id,
+        filename: session.filename || "Uploaded File",
+        opening_balance: session.opening_balance,
+        totalRecords: session.total_records,
+        processedAt: new Date(session.created_at),
+      }));
+    },
   });
 }

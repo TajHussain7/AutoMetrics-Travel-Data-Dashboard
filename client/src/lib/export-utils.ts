@@ -56,18 +56,21 @@ export async function exportToExcel(
         Voucher: item.voucher,
         Reference: item.reference || "",
         Narration: item.narration || "",
-        Debit: parseFloat(item.debit || "0"),
-        Credit: parseFloat(item.credit || "0"),
-        Balance: parseFloat(item.balance || "0"),
-        "Customer Name": item.customerName || "",
+        Debit: item.debit?.toString() || "0",
+        Credit: item.credit?.toString() || "0",
+        Balance: item.balance?.toString() || "0",
+        "Customer Name": item.customer_name || "",
         Route: item.route || "",
         PNR: item.pnr || "",
-        "Flying Date": item.flyingDate || "",
-        "Flight Status": getFlightStatus(item),
-        "Customer Rate": parseFloat(item.customerRate || "0"),
-        "Company Rate": parseFloat(item.companyRate || "0"),
-        Profit: parseFloat(item.profit || "0"),
-        "Payment Status": item.paymentStatus || "",
+        "Flying Date": item.flying_date || "",
+        "Flight Status": getFlightStatus({
+          flying_date: item.flying_date,
+          flying_status: item.flying_status,
+        }),
+        "Customer Rate": item.customer_rate?.toString() || "0",
+        "Company Rate": item.company_rate?.toString() || "0",
+        Profit: item.profit?.toString() || "0",
+        "Payment Status": item.payment_status || "",
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(tableData);
@@ -78,11 +81,11 @@ export async function exportToExcel(
     if (options.includeSections.summaryCards) {
       const totalBookings = filteredData.length;
       const totalRevenue = filteredData.reduce(
-        (sum, item) => sum + parseFloat(item.debit || "0"),
+        (sum, item) => sum + (item.debit || 0),
         0
       );
       const totalProfit = filteredData.reduce(
-        (sum, item) => sum + parseFloat(item.profit || "0"),
+        (sum, item) => sum + (item.profit || 0),
         0
       );
       const profitMargin =

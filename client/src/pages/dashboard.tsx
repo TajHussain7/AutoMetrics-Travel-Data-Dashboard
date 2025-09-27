@@ -2,7 +2,7 @@ import { useState } from "react";
 import TopNav from "@/components/navigation/top-nav";
 import FileUpload from "@/components/dashboard/file-upload";
 import SummaryCards from "@/components/dashboard/summary-cards";
-import FeedbackPrompt from "@/components/dashboard/travel-animation";
+import FeedbackPrompt from "@/components/dashboard/feedback";
 import EnhancedDataTable from "@/components/data-table/enhanced-data-table";
 import ChartsGrid from "@/components/analytics/charts-grid";
 import ExportOptions from "@/components/export/export-options";
